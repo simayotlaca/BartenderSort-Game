@@ -1,0 +1,170 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b97b2ff6e5bde048bbb3e9185e2b854, type: 3}
+  m_Name: Level_030
+  m_EditorClassIdentifier: Assembly-CSharp::BartenderSort.Core.BsLevel
+  Index: 32
+  DisplayName: Level 32
+  Glasses:
+  - Type: 3
+    Layers:
+    - Color: 5
+      Hidden: 0
+      LockUntil: 0
+    - Color: 4
+      Hidden: 1
+      LockUntil: 0
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 2
+    Layers:
+    - Color: 4
+      Hidden: 0
+      LockUntil: 0
+    - Color: 1
+      Hidden: 0
+      LockUntil: 2
+    - Color: 1
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 4
+    Layers:
+    - Color: 5
+      Hidden: 0
+      LockUntil: 0
+    - Color: 0
+      Hidden: 0
+      LockUntil: 0
+    - Color: 1
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 3
+    Layers:
+    - Color: 1
+      Hidden: 0
+      LockUntil: 4
+    - Color: 1
+      Hidden: 0
+      LockUntil: 0
+    - Color: 3
+      Hidden: 1
+      LockUntil: 0
+    - Color: 4
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 2
+    Layers:
+    - Color: 5
+      Hidden: 1
+      LockUntil: 0
+    - Color: 5
+      Hidden: 0
+      LockUntil: 0
+    - Color: 3
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 4
+    Layers:
+    - Color: 0
+      Hidden: 0
+      LockUntil: 3
+    - Color: 0
+      Hidden: 0
+      LockUntil: 0
+    - Color: 0
+      Hidden: 0
+      LockUntil: 0
+    - Color: 1
+      Hidden: 0
+      LockUntil: 3
+    UnlockAfter: 0
+  - Type: 3
+    Layers:
+    - Color: 5
+      Hidden: 0
+      LockUntil: 2
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    - Color: 4
+      Hidden: 0
+      LockUntil: 0
+    - Color: 4
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 0
+    Layers: []
+    UnlockAfter: 1
+  - Type: 1
+    Layers:
+    - Color: 1
+      Hidden: 0
+      LockUntil: 0
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 3
+  - Type: 1
+    Layers:
+    - Color: 0
+      Hidden: 0
+      LockUntil: 4
+    - Color: 0
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  ColumnsPerRow: 4
+  Orders:
+  - Kind: 0
+    Glass: 3
+    Contents: 05000000040000000200000001000000
+    TimeLimit: 45
+  - Kind: 1
+    Glass: 2
+    Contents: 040000000400000004000000
+    TimeLimit: 45
+  - Kind: 0
+    Glass: 4
+    Contents: 0500000000000000010000000400000002000000
+    TimeLimit: 45
+  - Kind: 0
+    Glass: 3
+    Contents: 01000000010000000100000001000000
+    TimeLimit: 45
+  - Kind: 1
+    Glass: 2
+    Contents: 050000000300000003000000
+    TimeLimit: 45
+  - Kind: 1
+    Glass: 4
+    Contents: 0000000000000000000000000100000000000000
+    TimeLimit: 45
+  - Kind: 0
+    Glass: 3
+    Contents: 05000000020000000500000000000000
+    TimeLimit: 45
+  OrderSlots: 3
+  AllowHiddenColors: 1
+  AllowTimedOrders: 1
+  UndoCount: 3
+  ExtraGlassCount: 3
+  TimeBoostCount: 3
+  ShuffleCount: 1
+  ValidatedSolvable: 1
+  ValidationNote: "Uretildi 2026-09-03 (geriye-karistirma + cozucu kapisi). slack 0.83, 3 bardak tipi."

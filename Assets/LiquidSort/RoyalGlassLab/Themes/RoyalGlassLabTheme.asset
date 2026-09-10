@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9d117b3da1c24c6ab1fd01310f631bd, type: 3}
+  m_Name: RoyalGlassLabTheme
+  m_EditorClassIdentifier: 
+  settings:
+    preserveAuthoredFront: 1
+    authoredFrontMaterial: {fileID: 2100000, guid: 2cda54188522a42a6b85f6aa58f40a43, type: 2}
+    contourDark: {r: 0.2509804, g: 0.34509805, b: 0.42745098, a: 1}
+    contourLight: {r: 0.8352941, g: 0.87058824, b: 0.89411765, a: 1}
+    lightDirection: 135
+    glassKeyLight: {r: 1, g: 0.8509804, b: 0.627451, a: 0.72}
+    glassFillLight: {r: 0.6627451, g: 0.73333335, b: 0.78431374, a: 1}
+    sideFxStrength: 0.46
+    rimHotspotStrength: 0
+    bottomLensStrength: 0
+    liquidBounceStrength: 0
+    paintedToyStrength: 0
+    toyMidColor: {r: 0.31, g: 0.47, b: 0.59, a: 1}
+    toyFillColor: {r: 0.27, g: 0.89, b: 0.96, a: 1}
+    shadowColor: {r: 0.4745098, g: 0.23137255, b: 0.19607843, a: 1}
+    shadowStrength: 0.6
+    wideShadowColor: {r: 0.4117647, g: 0.2509804, b: 0.3647059, a: 1}
+    wideShadowStrength: 0.24
+    panelColor: {r: 0, g: 0, b: 0, a: 1}
+    panelAlpha: 0
+    panelPadding: 0.35
+    panelCornerRadius: 0.3

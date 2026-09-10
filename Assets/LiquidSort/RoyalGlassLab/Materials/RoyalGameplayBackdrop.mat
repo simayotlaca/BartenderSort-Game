@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: RoyalGameplayBackdrop
+  m_Shader: {fileID: 4800000, guid: e63f7a2bd1c84a8eb9540631fe92c7b4, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _Brightness: 0.92
+    - _BarAmbientStrength: 0.04
+    - _EnableExternalAlpha: 0
+    - _EdgeDesaturate: 0.06
+    - _Flatten: 0.92
+    - _FocusCenterY: 0.42
+    - _FocusHeight: 0.62
+    - _FocusWidth: 0.68
+    - _LiftStrength: 0.018
+    - _RadialEdgeDarken: 0.15
+    - _RadialStrength: 0.11
+    - _DecorCenterVisibility: 0.48
+    - _DecorEdgeVisibility: 0.07
+    - _SparkleSpeed: 0.85
+    - _SparkleStrength: 0.62
+    - _StripeFrequency: 24
+    - _Vignette: 0.27
+    - PixelSnap: 0
+    m_Colors:
+    - _BarAmbientColor: {r: 1, g: 0.72156864, b: 0.4392157, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _ConeColor: {r: 1, g: 0.7882353, b: 0.47843137, a: 0}
+    - _CyanSparkle: {r: 0.4627451, g: 0.8745098, b: 1, a: 0.17}
+    - _FlatColor: {r: 0.08627451, g: 0.18039216, b: 0.32156864, a: 1}
+    - _Flip: {r: 1, g: 1, b: 1, a: 1}
+    - _GoldSparkle: {r: 1, g: 0.8392157, b: 0.41960785, a: 0.32}
+    - _LavenderSparkle: {r: 0.6862745, g: 0.7882353, b: 1, a: 0.2}
+    - _LiftColor: {r: 0.25490198, g: 0.41960785, b: 0.6, a: 1}
+    - _RadialColor: {r: 0.19215687, g: 0.3529412, b: 0.5294118, a: 1}
+    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
+    - _StripeColor: {r: 1, g: 1, b: 1, a: 0.012}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
