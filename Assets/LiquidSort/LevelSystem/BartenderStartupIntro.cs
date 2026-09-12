@@ -124,6 +124,7 @@ namespace LiquidSort.Levels
                 throw new InvalidOperationException("Startup toast animation state is missing.");
             toastAnimator.Play(ToastState, 0, 0f);
             toastAnimator.Update(0f);
+            toast.GetComponent<CheersToastRefinedAnimation>()?.Sample(0f);
             // Hold the first frame without a zero playback speed (which can give UI effects an
             // infinite state duration while they calculate their meshes).
             toastAnimator.enabled = false;
@@ -139,6 +140,7 @@ namespace LiquidSort.Levels
                 toastAnimator.speed = 1f;
                 toastAnimator.Play(ToastState, 0, 0f);
                 toastAnimator.Update(0f);
+                toastAnimator.GetComponent<CheersToastRefinedAnimation>()?.Sample(0f);
                 BsAudio.Instance?.Play(BsSfx.StartupLogo, 0.9f);
 
                 float elapsed = 0f;

@@ -56,6 +56,9 @@ namespace LiquidSort.Levels
         [Tooltip("Camera used to move the world-space shelf fully beyond the screen edge.")]
         [SerializeField] private Camera worldCamera;
 
+        // Plays at the start of every level and every retry, so it sits under the round's own sounds.
+        private const float IntroCueVolume = 0.55f;
+
         [Header("Timing")]
         [Tooltip("Delay before the first channel moves. One rendered frame of the settled "
                + "background reads better than motion starting on frame zero.")]
@@ -193,9 +196,17 @@ namespace LiquidSort.Levels
                 // Keep the first visible frame on the prepared start pose even if a layout callback ran
                 // during the loading tail. A covered entrance needs no additional blank lead-in.
                 PoseOffScreen();
-                sequence?.Play();
+                if (sequence != null)
+                {
+                    sequence.Play();
+                    PlayIntroCue();
+                }
             }
         }
+
+        /// <summary>The board's entrance is otherwise silent, and no other cue claims this moment.</summary>
+        private static void PlayIntroCue() =>
+            BsAudio.Instance?.Play(BsSfx.LevelIntro, IntroCueVolume);
 
         private void BeginSequence(int version, bool covered = false)
         {
@@ -227,6 +238,11 @@ namespace LiquidSort.Levels
                 ReleaseBarrier();
                 return;
             }
+
+            // The cue belongs to the first frame of movement, not to a fixed moment: a covered entrance
+            // skips the lead-in, so the two paths would otherwise drift apart by that much. A covered
+            // sequence starts paused, and WaitForCover plays the cue when it releases it.
+            if (!covered) built.InsertCallback(leadIn, PlayIntroCue);
 
             built.OnComplete(() => FinishSequence(built));
             built.OnKill(() => HandleSequenceKilled(built));

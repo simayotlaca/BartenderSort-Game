@@ -12,15 +12,14 @@ namespace LiquidSort.Levels
     [AddComponentMenu("")]
     public sealed class BartenderCheersSequence : MonoBehaviour
     {
-        // Keep the clink at 1.65s aligned with audio and liquid contact. Words enter at 0.10/0.72s; the
-        // card is usable at 3.30s while music finishes.
-        public const float TitleTime = 0.10f;
-        // Keep the original glass approach; the logo reveal fills the lead-in.
-        public const float GlassEntryTime = 1.27f;
-        public const float ContactTime = 1.65f;
-        public const float GlassExitTime = 2.75f;
-        public const float CardRevealTime = 2.90f;
-        public const float Duration = 3.30f;
+        // Approved 1.60-second toast, followed by a 0.40-second card/intro handoff.
+        // Both installed audio cues place their single glass contact at 0.30 seconds.
+        public const float TitleTime = 0.365f;
+        public const float GlassEntryTime = 0.012f;
+        public const float ContactTime = 0.30f;
+        public const float GlassExitTime = 1.60f;
+        public const float CardRevealTime = 1.60f;
+        public const float Duration = 2.00f;
 
         private static readonly int ToastState = Animator.StringToHash("Base Layer.Toast One Shot");
 
@@ -29,6 +28,7 @@ namespace LiquidSort.Levels
         private RectTransform toastComposition;
         private RectTransform toastDimmer;
         private Animator toastAnimator;
+        private CheersToastRefinedAnimation toastVisuals;
         private Image originalCardTitle;
         private BartenderCoinRewardEffect rewardEffect;
         private bool configured;
@@ -49,6 +49,7 @@ namespace LiquidSort.Levels
             if (toastRoot != null)
             {
                 toastAnimator = toastRoot.GetComponent<Animator>();
+                toastVisuals = toastRoot.GetComponent<CheersToastRefinedAnimation>();
                 toastComposition = toastRoot as RectTransform;
                 toastDimmer = toastRoot.Find("Dimmer") as RectTransform;
             }
@@ -83,6 +84,8 @@ namespace LiquidSort.Levels
                 toastAnimator.speed = 1f;
                 toastAnimator.Play(ToastState, 0, 0f);
                 toastAnimator.Update(0f);
+                // A reused popup must not display its previous final pose before LateUpdate.
+                if (toastVisuals != null) toastVisuals.Sample(0f);
             }
         }
 
@@ -126,7 +129,7 @@ namespace LiquidSort.Levels
             LayoutToastComposition(toastComposition, toastViewport, toastDimmer);
         }
 
-        // Both the opening and the win toast use the approved 1100 x 670 authoring space.
+        // Both the opening and the win toast use the approved centered 720 x 720 authoring space.
         // Fit inside the reference viewport independently of their different CanvasScaler modes.
         internal static void LayoutToastComposition(RectTransform composition, RectTransform viewport,
             RectTransform fullscreenDimmer = null)
@@ -137,19 +140,18 @@ namespace LiquidSort.Levels
             if (scale <= 0f) return;
 
             Vector2 center = new Vector2(0.5f, 0.5f);
-            Vector2 offset = new Vector2(0f, -340f);
             composition.anchorMin = composition.anchorMax = center;
             composition.pivot = center;
-            composition.sizeDelta = new Vector2(1100f, 670f);
+            composition.sizeDelta = new Vector2(720f, 720f);
             composition.localScale = Vector3.one * scale;
-            composition.anchoredPosition = offset * scale;
+            composition.anchoredPosition = Vector2.zero;
 
             // Only the artwork moves. Keep the animated dimmer covering the whole screen.
             if (fullscreenDimmer == null) return;
             fullscreenDimmer.anchorMin = fullscreenDimmer.anchorMax = center;
             fullscreenDimmer.pivot = center;
             fullscreenDimmer.localScale = Vector3.one;
-            fullscreenDimmer.anchoredPosition = -offset;
+            fullscreenDimmer.anchoredPosition = Vector2.zero;
             fullscreenDimmer.sizeDelta = viewportSize / scale;
         }
 

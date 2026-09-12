@@ -406,22 +406,11 @@ namespace LiquidSort.Levels
         }
 
         /// <summary>
-        /// Too few coins always opens the shop, even when another rule also blocks the booster. With enough
-        /// coins, rejection only shakes the button.
+        /// Opens the shop only when coins are the sole blocker. An unusable booster keeps its refusal cue.
         /// </summary>
         private void Refuse(ref Slot slot, BoosterBarPresenter.BoosterKind kind)
         {
-            // While choosing a shuffle target, other boosters cannot open a shop or send another board
-            // command.
-            if (presenter.IsShuffleSelectionActive)
-            {
-                PlayRefusal(ref slot);
-                return;
-            }
-
-            int cost = presenter.CoinCostOf(kind);
-
-            if (!BartenderProgressService.CanAfford(cost)
+            if (presenter.CanOfferShop(kind)
                 && BartenderShopPresenter.TryOpenCurrentScene())
             {
                 // The shop handles feedback now. Play the rejection sound but skip the extra shake.

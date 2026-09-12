@@ -320,7 +320,6 @@ namespace LiquidSort.Levels
         [SerializeField, Range(0.8f, 1f)] private float twoRowShelfWidthScale = 0.91f;
         [Tooltip("Stable point below the resting order cards, outside their animated group. Only two-row boards fit below it.")]
         [SerializeField] private Transform twoRowTopClearanceAnchor;
-        private bool twoRowFocusApplied;
         private Vector3 shelfTransitionStartBoardPosition;
         private Vector3 shelfTransitionStartBoardScale;
         private Vector3 shelfTransitionFinalBoardPosition;
@@ -328,10 +327,10 @@ namespace LiquidSort.Levels
         private bool shelfBoardTransitionPrepared;
 
         [Header("Timed order headroom")]
-        [Tooltip("Extra vertical room for timer plates on three-shelf levels, in layout units. "
-               + "The complete shelf and glass group contracts around the lowest plank at level start.")]
+        [Tooltip("Extra vertical room for timer plates on timed levels, in layout units. "
+               + "After normal board composition, the shelf and glass group contracts around the lowest plank.")]
         [SerializeField, Min(0f)] private float timedOrderHeadroom = 0.42f;
-        [Tooltip("Maximum additional shrink for timer room. 0.08 keeps at least 92% of the authored size.")]
+        [Tooltip("Maximum additional shrink for timer room. 0.08 keeps at least 92% of the normal board composition.")]
         [SerializeField, Range(0f, 0.08f)] private float maximumTimedBoardShrink = 0.08f;
         private bool boardPoseCaptured;
         private Vector3 authoredBoardPosition;
@@ -465,6 +464,11 @@ namespace LiquidSort.Levels
         [Tooltip("Glass rearrangement time during a level. 0 moves instantly.")]
         [SerializeField, Min(0f)] private float reseatDuration = 0.22f;
 
+        [Header("Delivery effect")]
+        [Tooltip("The reusable Glass Delivery Effect instance in this scene's Effects hierarchy. "
+            + "Select that object to tune the glass motion and sparkles.")]
+        [SerializeField] private BottleDeliveryEffect deliveryEffect;
+
         [Header("Layer presentation")]
         [Tooltip("Neutral fill used while a liquid unit is concealed by either mystery "
                + "or delivery-lock rules.")]
@@ -509,6 +513,12 @@ namespace LiquidSort.Levels
             new BsShelfPresentationFlow();
         private SeatPresentationRun activeSeatPresentation;
         private long nextSeatPresentationRunId;
+        // Detached from input/layout immediately, but reserved in the pool until its exit settles.
+        private Actor departingActor;
+        private BottleDeliveryEffect activeDeliveryEffect;
+        private long activeDeliveryEffectRunId;
+        private float activeDeliveryDuration;
+        private bool missingDeliveryEffectReported;
 
         private BartenderLevelController subscribedController;
         private BsLevel presentedLevel;
@@ -1482,22 +1492,29 @@ namespace LiquidSort.Levels
             try
             {
                 synchronized = TrySynchronizeCore(
-                    snapshot, palette);
+                    snapshot, palette, deliveryReceipt);
             }
             finally
             {
-                if (synchronizationStarted)
+                try
                 {
-                    if (presentationFlow.TrySettleGarnishSynchronization(
-                            this,
-                            garnishToken,
-                            deliveryReceipt,
-                            boardRevision,
-                            synchronized
-                                ? BsShelfSettleReason.Completed
-                                : BsShelfSettleReason.Cancelled,
-                            out BsShelfFlowSettlement garnishSettlement))
-                        HandleShelfFlowSettlement(garnishSettlement);
+                    if (!synchronized) FinishDeliveryDeparture();
+                }
+                finally
+                {
+                    if (synchronizationStarted)
+                    {
+                        if (presentationFlow.TrySettleGarnishSynchronization(
+                                this,
+                                garnishToken,
+                                deliveryReceipt,
+                                boardRevision,
+                                synchronized
+                                    ? BsShelfSettleReason.Completed
+                                    : BsShelfSettleReason.Cancelled,
+                                out BsShelfFlowSettlement garnishSettlement))
+                            HandleShelfFlowSettlement(garnishSettlement);
+                    }
                 }
             }
             // Order-ready is committed. Garnish effects finish locally without blocking board input.
@@ -1512,8 +1529,14 @@ namespace LiquidSort.Levels
 
         private bool TrySynchronizeCore(
             BsBoard snapshot,
-            BsPalette palette)
+            BsPalette palette,
+            BartenderDeliveryReceipt deliveryReceipt)
         {
+            // Finish the previous run before undo/restart can acquire any of its pooled actors.
+            StopSeatAnimation();
+            Actor deliveredActor = null;
+            if (CanAnimate && deliveryReceipt?.DeliveredGlass != null)
+                actorByGlassId.TryGetValue(deliveryReceipt.DeliveredGlass.Id, out deliveredActor);
             int previousRowCount = configuredRowCount;
             bool overflowWasActive = overflowShelfActive;
             Actor addedActor = null;
@@ -1549,7 +1572,14 @@ namespace LiquidSort.Levels
             {
                 Actor actor = actors[i];
                 if (!actor.Assigned || ContainsActor(activeActors, actor)) continue;
-                Release(actor);
+                if (ReferenceEquals(actor, deliveredActor))
+                {
+                    actorByGlassId.Remove(actor.GlassId);
+                    glassIdByBottle.Remove(actor.Bottle);
+                    actor.GlassId = -1;
+                    departingActor = actor;
+                }
+                else Release(actor);
             }
 
             int mainGlassCount;
@@ -1607,16 +1637,17 @@ namespace LiquidSort.Levels
             }
             if (revealedOverflow || revealedMainRow)
             {
-                StopSeatAnimation();
                 CaptureShelfTransitionStart(previousRowCount, overflowWasActive);
                 ApplyShelfLayout(configuredRowCount);
             }
 
-            LayoutActiveActors(!(revealedOverflow || revealedMainRow));
-            if (revealedMainRow && twoRowFocusApplied)
-                RestoreBoardCompositionFit();
+            // The old run was stopped before rebuilding the actor list. Keep the new departure reserved.
+            LayoutActiveActors(false);
             if (revealedOverflow || revealedMainRow)
+            {
+                ApplyBoardCompositionFit();
                 PrepareShelfTransitionEndAndRestore();
+            }
             // Same-level commits change contents, not glass identity. Keep active garnish effects running;
             // only new actors need setup.
             ActivateAndRefreshActors(false);
@@ -2325,7 +2356,8 @@ namespace LiquidSort.Levels
             for (int i = 0; i < actors.Count; i++)
             {
                 Actor actor = actors[i];
-                if (!actor.Assigned && actor.Type == type
+                if (actor != null && actor.Bottle != null && actor.SeatRoot != null
+                    && !actor.Assigned && actor.Type == type
                     && actor.ExtraShotReserve == requiresReserve) return actor;
             }
             return null;
@@ -2650,9 +2682,11 @@ namespace LiquidSort.Levels
             bool revealsShelf = revealedRow != null && revealedRow.plank != null;
             bool animatesPurchase = addedActor != null;
             bool animatesFurniture = shelfTransitionPrepared;
-            if (!CanAnimate || reseatDuration <= 0f
-                || (!animateEntrance && !animatesPurchase && !revealsShelf))
+            bool animatesDelivery = departingActor != null;
+            if (!CanAnimate || (!animatesDelivery && (reseatDuration <= 0f
+                || (!animateEntrance && !animatesPurchase && !revealsShelf))))
             {
+                FinishDeliveryDeparture();
                 FinishShelfTransition();
                 return;
             }
@@ -2667,7 +2701,8 @@ namespace LiquidSort.Levels
                                             actor.SeatLayoutRotation) > 0.01f
                         || (actor.PreviousSeatScale - actor.SeatScale).sqrMagnitude > 1e-6f);
             }
-            if (!moved && !animatesPurchase && !revealsShelf && !animatesFurniture)
+            if (!moved && !animatesPurchase && !revealsShelf && !animatesFurniture
+                && !animatesDelivery)
             {
                 FinishShelfTransition();
                 return;
@@ -2676,6 +2711,36 @@ namespace LiquidSort.Levels
             float duration = revealsShelf
                 ? Mathf.Max(reseatDuration, overflowRevealDuration)
                 : Mathf.Max(reseatDuration, 0.28f);
+            float movementDelay = animatesDelivery ? 0.10f : 0f;
+            if (animatesDelivery)
+            {
+                BottleDeliveryEffect requestedEffect = deliveryEffect;
+                if (requestedEffect != null && requestedEffect.Begin(departingActor.Bottle,
+                        MotionRoot(departingActor), GlassSpace, departingActor.PlacementRenderer,
+                        out long effectRunId))
+                {
+                    // Capture the actual component and time for this run; Inspector edits affect the next one.
+                    activeDeliveryEffect = requestedEffect;
+                    activeDeliveryEffectRunId = effectRunId;
+                    activeDeliveryDuration = requestedEffect.Duration;
+                    missingDeliveryEffectReported = false;
+                    duration = Mathf.Max(activeDeliveryDuration,
+                        moved && animateEntrance && reseatDuration > 0f
+                            ? movementDelay + reseatDuration
+                            : 0f);
+                }
+                else
+                {
+                    if (requestedEffect == null && !missingDeliveryEffectReported)
+                    {
+                        missingDeliveryEffectReported = true;
+                        Debug.LogWarning("Assign the scene's Glass Delivery Effect on BartenderShelfLevelView. "
+                            + "The committed delivery will still be cleared safely.", this);
+                    }
+                    FinishDeliveryDeparture();
+                    movementDelay = 0f;
+                }
+            }
             Vector3 addedStartPosition = Vector3.zero;
             Vector3 addedStartScale = Vector3.one;
             if (animatesPurchase)
@@ -2701,15 +2766,15 @@ namespace LiquidSort.Levels
             }
             BartenderLevelController barrierController = controller;
             if (barrierController != null
-                && barrierController.AcquirePresentationBarrier(this)
-                && !run.TryAttachBarrier(barrierController, this))
+                && barrierController.AcquirePresentationBarrier(run)
+                && !run.TryAttachBarrier(barrierController, run))
             {
                 ExecutePresentationCleanup(
                     null,
                     () => TrySettleSeatPresentation(
                         run, BsShelfSettleReason.Cancelled, false),
                     null,
-                    () => barrierController.ReleasePresentationBarrier(this));
+                    () => barrierController.ReleasePresentationBarrier(run));
                 return;
             }
             // Start the purchase sound with the fall; its impact is at 0.28 seconds. Level loads do not play
@@ -2719,7 +2784,8 @@ namespace LiquidSort.Levels
             TryStartSeatPresentationRoutine(
                 run,
                 ReseatRoutine(
-                    run, addedActor, addedStartPosition, addedStartScale, duration));
+                    run, addedActor, addedStartPosition, addedStartScale, duration,
+                    movementDelay));
         }
 
         private IEnumerator EntranceRoutine(
@@ -2907,7 +2973,8 @@ namespace LiquidSort.Levels
                                           Actor addedActor,
                                           Vector3 addedStartPosition,
                                           Vector3 addedStartScale,
-                                          float duration)
+                                          float duration,
+                                          float movementDelay)
         {
             bool completed = false;
             try
@@ -2917,7 +2984,24 @@ namespace LiquidSort.Levels
                 {
                     if (!ReferenceEquals(activeSeatPresentation, run) || !CanAnimate) yield break;
                     float raw = Mathf.Clamp01(elapsed / duration);
-                    float k = Mathf.SmoothStep(0f, 1f, raw);
+                    float movementProgress = movementDelay > 0f
+                        ? Mathf.Clamp01((elapsed - movementDelay)
+                            / Mathf.Max(0.001f, duration - movementDelay))
+                        : raw;
+                    // With reseating disabled, retain the old slots until the departing glass is gone.
+                    // The final snap then applies the new layout without placing another glass over it.
+                    if (movementDelay > 0f && (!animateEntrance || reseatDuration <= 0f))
+                        movementProgress = 0f;
+                    if (departingActor != null)
+                    {
+                        if (activeDeliveryEffect != null)
+                            activeDeliveryEffect.Step(elapsed, activeDeliveryEffectRunId);
+                        if (elapsed >= activeDeliveryDuration || activeDeliveryEffect == null
+                            || !activeDeliveryEffect.OwnsRun(activeDeliveryEffectRunId))
+                            FinishDeliveryDeparture();
+                        if (!ReferenceEquals(activeSeatPresentation, run)) yield break;
+                    }
+                    float k = Mathf.SmoothStep(0f, 1f, movementProgress);
                     StepShelfReveal(raw);
                     StepShelfTransition(k);
                     for (int i = 0; i < activeActors.Count; i++)
@@ -3345,6 +3429,28 @@ namespace LiquidSort.Levels
         }
 
         private void FinishSeatPresentationVisuals()
+        {
+            // A visual failure must still free the actor and restore all remaining shelf poses.
+            ExecutePresentationCleanup(null, FinishDeliveryDeparture,
+                FinishRemainingSeatPresentationVisuals, null);
+        }
+
+        private void FinishDeliveryDeparture()
+        {
+            Actor actor = departingActor;
+            BottleDeliveryEffect effect = activeDeliveryEffect;
+            long effectRunId = activeDeliveryEffectRunId;
+            departingActor = null;
+            activeDeliveryEffect = null;
+            activeDeliveryEffectRunId = 0L;
+            activeDeliveryDuration = 0f;
+            ExecutePresentationCleanup(null,
+                effect != null ? (Action)(() => effect.Stop(effectRunId)) : null,
+                actor != null ? (Action)(() => Release(actor)) : null,
+                null);
+        }
+
+        private void FinishRemainingSeatPresentationVisuals()
         {
             for (int i = 0; i < activeActors.Count; i++)
                 DropEntranceSorting(activeActors[i]);
@@ -3794,7 +3900,7 @@ namespace LiquidSort.Levels
 
             ApplyShelfLayout(configuredRowCount);
             LayoutActiveActors();
-            if (twoRowFocusApplied) ApplyTwoRowFocus();
+            ApplyBoardCompositionFit();
             // Only the layout moved. Skip PresentationChanged so the selected glass follows without being
             // deselected.
         }
@@ -3803,18 +3909,23 @@ namespace LiquidSort.Levels
             ShelfLayoutSolver.CompositionScale(LayoutMetrics, rowCount);
 
         /// <summary>
-        /// Fit the complete board once per level: bring two shelves closer, or reserve timer room on larger
-        /// boards. Reading the whole order queue keeps later deliveries from resizing the board.
+        /// Apply normal board composition, then reserve timer room on every timed layout.
+        /// Reading the whole order queue keeps later deliveries from resizing the board.
         /// The dedicated root sits below the intro target, so entrance motion cannot overwrite this fit.
         /// </summary>
         private void ApplyBoardCompositionFit()
         {
+            // Rebuild from the authored pose so repeated fits cannot compound focus or timer shrink.
+            RestoreBoardCompositionFit();
             if (configuredRowCount == ShelfLayoutSolver.MinimumRowCount && !overflowShelfActive)
-            {
                 ApplyTwoRowFocus();
-                return;
-            }
-            if (layoutSpace == null || configuredRowCount < 3 || presentedLevel == null
+            ApplyTimedBoardHeadroom();
+        }
+
+        private void ApplyTimedBoardHeadroom()
+        {
+            if (layoutSpace == null || configuredRowCount < ShelfLayoutSolver.MinimumRowCount
+                || presentedLevel == null
                 || !presentedLevel.AllowTimedOrders || presentedLevel.Orders == null) return;
             bool hasTimer = false;
             foreach (OrderDef order in presentedLevel.Orders)
@@ -3834,10 +3945,12 @@ namespace LiquidSort.Levels
 
             float scale = TimedBoardScale(bounds.max.y - pivot.y,
                 timedOrderHeadroom, maximumTimedBoardShrink);
-            layoutSpace.localScale = authoredBoardScale * scale;
+            Vector3 basePosition = layoutSpace.localPosition;
+            Vector3 baseScale = layoutSpace.localScale;
+            layoutSpace.localScale = baseScale * scale;
             Vector3 pivotInParent = layoutSpace.localRotation
-                                  * Vector3.Scale(authoredBoardScale, pivot);
-            layoutSpace.localPosition = authoredBoardPosition + pivotInParent * (1f - scale);
+                                  * Vector3.Scale(baseScale, pivot);
+            layoutSpace.localPosition = basePosition + pivotInParent * (1f - scale);
         }
 
         private void ApplyTwoRowFocus()
@@ -3866,8 +3979,6 @@ namespace LiquidSort.Levels
                 float downward = Mathf.Max(0f, boardTop - twoRowTopClearanceAnchor.position.y);
                 layoutSpace.position += Vector3.down * downward;
             }
-            twoRowFocusApplied = scale > 1f
-                || (layoutSpace.localPosition - authoredBoardPosition).sqrMagnitude > 1e-8f;
         }
 
         internal static float TimedBoardScale(float height, float headroom, float maximumShrink)
@@ -3906,7 +4017,6 @@ namespace LiquidSort.Levels
             }
             layoutSpace.localPosition = authoredBoardPosition;
             layoutSpace.localScale = authoredBoardScale;
-            twoRowFocusApplied = false;
         }
 
         private static bool ContainsActor(List<Actor> list, Actor wanted)
@@ -3918,23 +4028,42 @@ namespace LiquidSort.Levels
 
         private void Release(Actor actor)
         {
-            DropEntranceSorting(actor);
+            if (actor == null) return;
+            LiquidBottle ownedBottle = actor.Bottle;
             actorByGlassId.Remove(actor.GlassId);
-            if (actor.Bottle != null)
+            if (ownedBottle != null) glassIdByBottle.Remove(ownedBottle);
+            try
             {
-                glassIdByBottle.Remove(actor.Bottle);
-                ResetGarnishReadiness(actor.Bottle);
-                actor.Bottle.SetUnits(null);
-                CanonicaliseBottleLocalPose(actor);
-                actor.SeatRoot.localScale = Vector3.one;
-                actor.SeatRoot.localRotation = Quaternion.identity;
-                actor.Bottle.gameObject.SetActive(false);
+                // A lost seat or failed visual reset must not skip hiding the bottle.
+                ExecutePresentationCleanup(
+                    () => DropEntranceSorting(actor),
+                    () =>
+                    {
+                        if (ownedBottle == null) return;
+                        ResetGarnishReadiness(ownedBottle);
+                        ownedBottle.SetUnits(null);
+                    },
+                    () =>
+                    {
+                        CanonicaliseBottleLocalPose(actor);
+                        if (actor.SeatRoot == null) return;
+                        actor.SeatRoot.localScale = Vector3.one;
+                        actor.SeatRoot.localRotation = Quaternion.identity;
+                    },
+                    () =>
+                    {
+                        if (ownedBottle != null) ownedBottle.gameObject.SetActive(false);
+                    });
             }
-            actor.GlassId = -1;
-            actor.Assigned = false;
-            actor.GarnishOrderReady = false;
-            actor.Seated = false;
-            actor.HasPreviousSeat = false;
+            finally
+            {
+                // Keep this reservation until callbacks from visual cleanup have finished.
+                actor.GlassId = -1;
+                actor.GarnishOrderReady = false;
+                actor.Seated = false;
+                actor.HasPreviousSeat = false;
+                actor.Assigned = false;
+            }
         }
 
         private void ClearAssignments(bool deactivatePool = true)
@@ -4020,19 +4149,27 @@ namespace LiquidSort.Levels
 
         private void ClearPresentation()
         {
-            SettleShelfAndSeatPresentation(
-                BsShelfSettleReason.Cancelled,
-                () => SettleShelfPresentationFlow(BsShelfSettleReason.Cancelled));
-            ClearAssignments();
-            DisableAllShelves();
-            RestoreBoardCompositionFit();
-            overflowShelfActive = false;
-            configuredRowCount = 0;
-            configuredColumns = 1;
-            presentedLevel = null;
-            presentedBoardRevision = -1;
-            Ready = false;
-            PublishPresentationChangedSafely();
+            try
+            {
+                ExecutePresentationCleanup(
+                    () => SettleShelfAndSeatPresentation(
+                        BsShelfSettleReason.Cancelled,
+                        () => SettleShelfPresentationFlow(BsShelfSettleReason.Cancelled)),
+                    () => ClearAssignments(),
+                    DisableAllShelves,
+                    RestoreBoardCompositionFit);
+            }
+            finally
+            {
+                // Even a failed visual cleanup cannot leave an unloaded board marked ready.
+                overflowShelfActive = false;
+                configuredRowCount = 0;
+                configuredColumns = 1;
+                presentedLevel = null;
+                presentedBoardRevision = -1;
+                Ready = false;
+                PublishPresentationChangedSafely();
+            }
         }
 
         private void PublishPresentationChangedSafely()

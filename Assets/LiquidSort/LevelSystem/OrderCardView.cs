@@ -1095,7 +1095,7 @@ namespace LiquidSort.Levels
             return TrackLifecycle(sequence, revision, true);
         }
 
-        /// <summary>Removes the delivered card after its stamp has been shown.</summary>
+        /// <summary>Fades the delivered card in its slot after its brief highlight.</summary>
         public Tween PlayQueueExit(float duration)
         {
             CancelTimerExpiredFeedback();
@@ -1110,21 +1110,10 @@ namespace LiquidSort.Levels
                 CanonicalizeVisibility(false);
                 return null;
             }
-            float width = Mathf.Max(1f, rt.rect.width);
-            float height = Mathf.Max(1f, rt.rect.height);
-            Vector2 end = restingAnchoredPosition
-                          + new Vector2(-width * 0.58f, height * 0.16f);
-
             Sequence sequence = DOTween.Sequence()
                 .SetTarget(rt).SetUpdate(true).SetRecyclable(true);
-            sequence.Append(rt.DOAnchorPos(end, duration)
-                .SetEase(Ease.InCubic).SetRecyclable(true));
-            sequence.Join(rt.DOScale(authoredScale * 0.86f, duration)
-                .SetEase(Ease.InQuad).SetRecyclable(true));
-            Tween liftTween = CardLiftTween(0.82f, duration, Ease.InCubic);
-            if (liftTween != null) sequence.Join(liftTween);
-            sequence.Join(canvasGroup.DOFade(0f, duration * 0.78f)
-                .SetEase(Ease.InQuad).SetRecyclable(true));
+            sequence.Append(canvasGroup.DOFade(0f, duration)
+                .SetEase(Ease.InOutSine).SetRecyclable(true));
             return TrackLifecycle(sequence, revision, false);
         }
 
@@ -1154,50 +1143,36 @@ namespace LiquidSort.Levels
         }
 
         /// <summary>
-        /// Pops the delivery stamp in and pulls the card back slightly so the reward is easy to read.
+        /// Keeps the order readable and gives its border a quiet warm glow before the card fades away.
         /// </summary>
         public void ShowDelivered()
         {
-            if (vesselPreview != null) vesselPreview.Hide();
             SuspendTimerEmphasis();
-            if (timerRoot != null) timerRoot.gameObject.SetActive(false);
-            // Hide recipe dots after delivery so the stamp can use their space.
-            if (chipColumn != null) chipColumn.gameObject.SetActive(false);
-
-            // Turn the match outline into one warm flash that fades as the tick appears.
             highlighted = false;
-            SetCardLift(0f);
-            PlayCompletionEdgePulse();
-
             desiredVisible = true;
-            uint poseRevision = InvalidateLifecycleTweens();
+            InvalidateLifecycleTweens();
+            InvalidateTickTween();
+            if (hangSwing != null) hangSwing.Stop();
             presentationState.Dispatch(BsOrderCardTrigger.ResetVisible);
             CanonicalizePose();
             CanonicalizeVisibility(true);
+            if (tickBadge != null) tickBadge.gameObject.SetActive(false);
+            PlayDeliveryEdgeGlow();
+        }
 
-            if (tickBadge != null)
-            {
-                tickBadge.gameObject.SetActive(true);
-                RectTransform trt = tickBadge.rectTransform;
-                uint revision = InvalidateTickTween();
-                trt.localScale = Vector3.zero;
-                Sequence tickSequence = DOTween.Sequence()
-                    .SetTarget(trt).SetUpdate(true).SetRecyclable(true)
-                    .Append(trt.DOScale(authoredTickScale * 1.3f, 0.16f)
-                        .SetEase(Ease.OutQuad).SetRecyclable(true))
-                    .Append(trt.DOScale(authoredTickScale, 0.2f)
-                        .SetEase(Ease.OutBack).SetRecyclable(true));
-                TrackTick(tickSequence, revision);
-            }
+        private void PlayDeliveryEdgeGlow()
+        {
+            if (edge == null) return;
 
-            if (rt == null) return;
-            Sequence poseSequence = DOTween.Sequence()
-                .SetTarget(rt).SetUpdate(true).SetRecyclable(true)
-                .Append(rt.DOScale(authoredScale * 0.94f, 0.14f)
-                    .SetEase(Ease.OutQuad).SetRecyclable(true))
-                .Append(rt.DOScale(authoredScale, 0.18f)
-                    .SetEase(Ease.OutBack).SetRecyclable(true));
-            TrackPosePulse(poseSequence, poseRevision);
+            uint revision = InvalidateEdgeTween();
+            edge.rectTransform.localScale = authoredEdgeScale;
+            Sequence sequence = DOTween.Sequence()
+                .SetTarget(edge).SetUpdate(true).SetRecyclable(true)
+                .Append(edge.DOColor(WithAlpha(completionLineColor, 0.70f), 0.10f)
+                    .SetEase(Ease.OutSine).SetRecyclable(true))
+                .Append(edge.DOColor(WithAlpha(completionGlowColor, 0f), 0.20f)
+                    .SetEase(Ease.InSine).SetRecyclable(true));
+            TrackCompletionEdge(sequence, revision);
         }
 
         /// <summary>

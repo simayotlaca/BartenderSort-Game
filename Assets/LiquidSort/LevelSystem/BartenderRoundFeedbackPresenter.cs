@@ -309,13 +309,8 @@ namespace LiquidSort.Levels
             if (useCheersIntro)
             {
                 cheers.InsertInto(sequence);
-                sequence.Insert(BartenderCheersSequence.ContactTime,
-                    flash.DOFade(0.32f, 0.06f)
-                    .SetEase(Ease.OutQuad).SetRecyclable(true));
-                // Time the flash from contact so it cannot end before the clink.
-                sequence.Insert(BartenderCheersSequence.ContactTime + 0.05f,
-                    flash.DOFade(0f, 0.30f)
-                    .SetEase(Ease.InSine).SetRecyclable(true));
+                // The native toast owns the localized contact glint. A full-screen flash
+                // would wash out the glass contact and the first rising bubbles.
                 sequence.InsertCallback(BartenderCheersSequence.ContactTime,
                     () => HandleCheersContact(receipt));
                 sequence.InsertCallback(BartenderCheersSequence.CardRevealTime,
@@ -392,7 +387,7 @@ namespace LiquidSort.Levels
             BartenderTerminalPresentationReceipt receipt)
         {
             if (!IsShownPresentationCurrent(receipt)) return;
-            // The win cue already includes contact at 1.65 seconds. Add only haptics here to avoid a second
+            // The win cue already includes contact at 0.30 seconds. Add only haptics here to avoid a second
             // hit.
             BartenderHaptics.Light();
         }

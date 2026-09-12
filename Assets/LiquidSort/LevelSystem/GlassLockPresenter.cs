@@ -19,6 +19,8 @@ namespace LiquidSort.Levels
             public LiquidBottle Bottle;
             public readonly List<SpriteRenderer> Questions =
                 new List<SpriteRenderer>(LiquidBottle.MaxBands);
+            public readonly List<Material> QuestionMaterials =
+                new List<Material>(LiquidBottle.MaxBands);
             public SpriteRenderer WholeInteriorDim;
             public SpriteRenderer WholeGlassDim;
             public SpriteRenderer WholeLock;
@@ -40,7 +42,7 @@ namespace LiquidSort.Levels
         private const float UnprofiledQuestionHeightShare = 0.125f;
         private const float QuestionVisibleHeightShare = 0.80f;
         private const float LayerLockRoyalHeightPixels = 56f;
-        private const float LayerLockBandHeightShare = 0.72f;
+        private const float LayerMarkerGapRoyalPixels = 8f;
         private const float WholeLockDiameterShare = 0.235f;
         private const float WholeLockMaxColumnHeightShare = 0.42f;
         private const float WholeLockMaxBodyWidthShare = 0.58f;
@@ -221,9 +223,16 @@ namespace LiquidSort.Levels
                         locked ? LayerLockRoyalHeightPixels : QuestionRoyalHeightPixels,
                         set.Bottle.profile)
                     : artHeight * UnprofiledQuestionHeightShare;
+                // Thin cocktail bands must not shrink the lock below its readable reference size.
+                // Keep the unit's centre so the marker still identifies the locked layer.
                 if (locked)
-                    wantedVisibleHeight = Mathf.Min(wantedVisibleHeight,
-                        bandHeight * LayerLockBandHeightShare);
+                    wantedVisibleHeight = FitLayerLockBesideMarkers(
+                        set.Bottle, glass, delivered, layerIndex, center.y, bandHeight,
+                        wantedVisibleHeight);
+                Material lockMaterial = locked ? MinimalLockSprites.LayerLockMaterial : null;
+                question.sharedMaterial = lockMaterial != null
+                    ? lockMaterial
+                    : set.QuestionMaterials[layerIndex];
                 // A delivery threshold must read as a lock even after its covering liquid is poured away.
                 // The same authored layer slot becomes a question only if a hidden colour remains after unlock.
                 PlaceSprite(question,
@@ -231,6 +240,39 @@ namespace LiquidSort.Levels
                     center, wantedVisibleHeight,
                     locked ? WholeLockVisibleHeightShare : QuestionVisibleHeightShare);
             }
+        }
+
+        private static float FitLayerLockBesideMarkers(
+            LiquidBottle bottle, RtGlass glass, int delivered, int layerIndex,
+            float centerY, float bandHeight, float wantedHeight)
+        {
+            // Crowded markers may use the previous compact size, but never disappear or shrink further.
+            float minimumHeight = Mathf.Min(wantedHeight, bandHeight * 0.72f);
+            float gap = bottle.profile != null
+                ? VesselPresentationMath.RoyalPixelsToLocal(LayerMarkerGapRoyalPixels, bottle.profile)
+                : ArtHeight(bottle) * 0.02f;
+            for (int direction = -1; direction <= 1; direction += 2)
+            {
+                int neighborIndex = layerIndex + direction;
+                if (neighborIndex < 0 || neighborIndex >= glass.Layers.Count) continue;
+                Layer neighbor = glass.Layers[neighborIndex];
+                bool neighborLocked = neighbor.IsLocked(delivered);
+                if (!neighborLocked && !LayerNeedsQuestion(neighbor, delivered)) continue;
+                if (!bottle.TryGetUnitVisualBand(neighborIndex, out Vector2 neighborCenter, out _))
+                    continue;
+
+                float available = Mathf.Max(0f, Mathf.Abs(neighborCenter.y - centerY) - gap);
+                // Two locks share the available space equally. An existing question keeps its size.
+                if (!neighborLocked)
+                {
+                    float questionHeight = bottle.profile != null
+                        ? VesselPresentationMath.RoyalPixelsToLocal(QuestionRoyalHeightPixels, bottle.profile)
+                        : ArtHeight(bottle) * UnprofiledQuestionHeightShare;
+                    available = Mathf.Max(0f, 2f * available - questionHeight);
+                }
+                wantedHeight = Mathf.Min(wantedHeight, available);
+            }
+            return Mathf.Max(minimumHeight, wantedHeight);
         }
 
         private void RefreshWholeLock(BottleVisuals set)
@@ -282,6 +324,7 @@ namespace LiquidSort.Levels
             SpriteRenderer[] questions = slots.LockQuestions;
             for (int i = 0; questions != null && i < questions.Length; i++)
             {
+                set.QuestionMaterials.Add(questions[i] != null ? questions[i].sharedMaterial : null);
                 set.Questions.Add(ConfigureAuthoredRenderer(
                     bottle, questions[i], sortingLayerId, QuestionOrder));
             }
@@ -460,7 +503,12 @@ namespace LiquidSort.Levels
         {
             if (set == null) return;
             for (int i = 0; i < set.Questions.Count; i++)
-                if (set.Questions[i] != null) set.Questions[i].enabled = false;
+            {
+                SpriteRenderer question = set.Questions[i];
+                if (question == null) continue;
+                question.enabled = false;
+                question.sharedMaterial = set.QuestionMaterials[i];
+            }
         }
 
         private static void HideWholeLock(BottleVisuals set)
@@ -549,6 +597,7 @@ namespace LiquidSort.Levels
 
         private static Sprite question;
         private static Sprite closedLock;
+        private static Material layerLockMaterial;
         private static readonly Dictionary<Texture2D, Sprite> interiorMasks =
             new Dictionary<Texture2D, Sprite>();
 
@@ -559,6 +608,11 @@ namespace LiquidSort.Levels
             closedLock != null
                 ? closedLock
                 : closedLock = Resources.Load<Sprite>(ClosedLockPath);
+
+        public static Material LayerLockMaterial =>
+            layerLockMaterial != null
+                ? layerLockMaterial
+                : layerLockMaterial = Resources.Load<Material>("Ui/Locks/LayerLockOutlined");
 
         public static Sprite InteriorMask(Texture2D texture)
         {

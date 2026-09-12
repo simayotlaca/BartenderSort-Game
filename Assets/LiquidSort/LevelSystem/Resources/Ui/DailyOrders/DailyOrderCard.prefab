@@ -177,7 +177,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
   m_AnchoredPosition: {x: 244, y: 64}
-  m_SizeDelta: {x: 344, y: 60}
+  m_SizeDelta: {x: 342, y: 60}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &4002
 CanvasRenderer:
@@ -241,7 +241,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -425,7 +425,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
   m_AnchoredPosition: {x: 118, y: 0}
-  m_SizeDelta: {x: 170, y: 200}
+  m_SizeDelta: {x: 210, y: 210}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3002
 CanvasRenderer:
@@ -866,10 +866,10 @@ MonoBehaviour:
   m_enableVertexGradient: 1
   m_colorMode: 3
   m_fontColorGradient:
-    topLeft: {r: 1, g: 0.960784, b: 0.737255, a: 1}
-    topRight: {r: 1, g: 0.960784, b: 0.737255, a: 1}
-    bottomLeft: {r: 0.964706, g: 0.67451, b: 0.207843, a: 1}
-    bottomRight: {r: 0.964706, g: 0.67451, b: 0.207843, a: 1}
+    topLeft: {r: 1, g: 0.87451, b: 0.45098, a: 1}
+    topRight: {r: 1, g: 0.87451, b: 0.45098, a: 1}
+    bottomLeft: {r: 0.952941, g: 0.635294, b: 0.176471, a: 1}
+    bottomRight: {r: 0.952941, g: 0.635294, b: 0.176471, a: 1}
   m_fontColorGradientPreset: {fileID: 0}
   m_fontSize: 50
   m_fontSizeBase: 50
@@ -972,13 +972,13 @@ MonoBehaviour:
   m_enableVertexGradient: 1
   m_colorMode: 3
   m_fontColorGradient:
-    topLeft: {r: 1, g: 0.960784, b: 0.737255, a: 1}
-    topRight: {r: 1, g: 0.960784, b: 0.737255, a: 1}
-    bottomLeft: {r: 0.964706, g: 0.67451, b: 0.207843, a: 1}
-    bottomRight: {r: 0.964706, g: 0.67451, b: 0.207843, a: 1}
+    topLeft: {r: 1, g: 0.87451, b: 0.45098, a: 1}
+    topRight: {r: 1, g: 0.87451, b: 0.45098, a: 1}
+    bottomLeft: {r: 0.952941, g: 0.635294, b: 0.176471, a: 1}
+    bottomRight: {r: 0.952941, g: 0.635294, b: 0.176471, a: 1}
   m_fontColorGradientPreset: {fileID: 0}
-  m_fontSize: 32
-  m_fontSizeBase: 32
+  m_fontSize: 34
+  m_fontSizeBase: 34
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontStyle: 0

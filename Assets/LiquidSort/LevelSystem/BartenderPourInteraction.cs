@@ -192,11 +192,17 @@ namespace LiquidSort.Levels
         /// </summary>
         public bool TrySetInputPolicy(IBartenderInputPolicy policy)
         {
-            if (policy == null) return false;
-            DropDestroyedInputPolicy();
-            if (inputPolicy != null && !ReferenceEquals(inputPolicy, policy)) return false;
+            if (!CanSetInputPolicy(policy)) return false;
             inputPolicy = policy;
             return true;
+        }
+
+        /// <summary>Checks modal ownership without acquiring it, for booster availability and shop offers.</summary>
+        internal bool CanSetInputPolicy(IBartenderInputPolicy policy)
+        {
+            if (policy == null) return false;
+            DropDestroyedInputPolicy();
+            return inputPolicy == null || ReferenceEquals(inputPolicy, policy);
         }
 
         public bool ClearInputPolicy(IBartenderInputPolicy policy)
@@ -287,7 +293,7 @@ namespace LiquidSort.Levels
 
         /// <summary>
         /// Pays for one undo, then pours the restored amount back while the shelf still shows the old
-        /// board. Delivery undo uses the shelf's existing glass-return and reseating animation.
+        /// board. The controller prevents undo from crossing a committed delivery.
         /// </summary>
         public bool TryPurchaseAndAnimateUndo(out string rejectionReason)
         {
@@ -610,8 +616,8 @@ namespace LiquidSort.Levels
         }
 
         /// <summary>
-        /// Commits delivery after the badge is ready. The synchronous shelf refresh removes the glass and
-        /// badge together.
+        /// Commits delivery after the badge is ready. Shelf synchronization removes its input mapping and
+        /// badge immediately, then finishes the glass's brief departure before releasing its pool slot.
         /// </summary>
         public bool TryCommitDelivery(int glassId, out string rejectionReason)
         {

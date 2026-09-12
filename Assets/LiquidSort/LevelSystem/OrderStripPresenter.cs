@@ -7,8 +7,8 @@ using UnityEngine;
 namespace LiquidSort.Levels
 {
     /// <summary>
-    /// Shows board slots with existing scene cards. After a committed delivery, keep the stamp visible for at
-    /// least 0.30 seconds before moving the queue.
+    /// Shows board slots with existing scene cards. A committed delivery briefly highlights its card,
+    /// then fades it in place before the next snapshot replaces it.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class OrderStripPresenter : MonoBehaviour
@@ -17,8 +17,9 @@ namespace LiquidSort.Levels
 
         // Keep the bell below the delivery sound so both stay clear in the mix.
         private const float OrderBellVolume = 0.78f;
-        private const float DeliveryStampMinimumHold = 0.30f;
-        private const float DeliveryExitDuration = 0.18f;
+        private const float OrderExpiredVolume = 0.85f;
+        private const float DeliveryGlowHold = 0.10f;
+        private const float DeliveryExitDuration = 0.20f;
         private const float QueueShiftDuration = 0.23f;
         private const float QueueShiftStagger = 0.025f;
         private const float QueueWatchdogGrace = 0.75f;
@@ -214,7 +215,7 @@ namespace LiquidSort.Levels
                 case BsOrderStripState.StampHold:
                     if (Time.frameCount > deferredAtFrame
                         && Time.unscaledTime >= deferredAtUnscaledTime
-                           + DeliveryStampMinimumHold)
+                           + DeliveryGlowHold)
                         EnqueueStampHoldElapsed(
                             presentationEpoch, pendingDeliveryReceipt);
                     return;
@@ -364,7 +365,7 @@ namespace LiquidSort.Levels
         }
 
         /// <summary>
-        /// After the stamp hold, move the old cards before applying the snapshot so their contents cannot
+        /// After the delivery glow, move the old cards before applying the snapshot so their contents cannot
         /// change mid-slide.
         /// </summary>
         private void BeginQueueTransition()
@@ -667,6 +668,9 @@ namespace LiquidSort.Levels
                 return null;
 
             ResetCountdownTicks();
+            // The countdown ticks stop here, so without this the loudest moment of a timed level is
+            // silent. The single caller guarantees one cue per expiry.
+            BsAudio.Instance?.Play(BsSfx.OrderExpired, OrderExpiredVolume);
             return card.PlayTimerExpiredFeedback();
         }
 

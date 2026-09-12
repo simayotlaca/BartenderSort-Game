@@ -150,6 +150,9 @@ namespace LiquidSort.Levels
         }
 
         public bool CanBegin(out string rejectionReason)
+            => CanBegin(ignoreCoins: false, out rejectionReason);
+
+        internal bool CanBegin(bool ignoreCoins, out string rejectionReason)
         {
             rejectionReason = null;
             if (active) return true;
@@ -160,7 +163,22 @@ namespace LiquidSort.Levels
                 rejectionReason = "The bottle presentation is busy.";
                 return false;
             }
-            return controller.CanPurchaseShuffle(out rejectionReason);
+            bool allowed = ignoreCoins
+                ? controller.CanUseShuffle(out rejectionReason)
+                : controller.CanPurchaseShuffle(out rejectionReason);
+            if (!allowed) return false;
+            if (!pourInteraction.CanSetInputPolicy(this))
+            {
+                rejectionReason = "Another guided interaction currently owns bottle input";
+                return false;
+            }
+
+            // A rule target must also be selectable in the scene before we offer a purchase or coins.
+            controller.CollectShuffleTargetIds(eligibleIds);
+            for (int i = 0; i < eligibleIds.Count; i++)
+                if (TryGetSelectableBottle(eligibleIds[i], out _, out _)) return true;
+            rejectionReason = "No eligible bottle has an active authored scene binding";
+            return false;
         }
 
         public bool TryBegin(out string rejectionReason)
@@ -192,12 +210,8 @@ namespace LiquidSort.Levels
             for (int i = 0; i < eligibleIds.Count; i++)
             {
                 int glassId = eligibleIds[i];
-                if (!shelfView.TryGetBottle(glassId, out LiquidBottle bottle)
-                    || bottle == null || !bottle.gameObject.activeInHierarchy)
-                    continue;
-
-                bottle.GetSortingSnapshot(out Renderer[] renderers, out _);
-                if (renderers == null || renderers.Length == 0)
+                if (!TryGetSelectableBottle(glassId, out LiquidBottle bottle,
+                        out Renderer[] renderers))
                     continue;
 
                 var currentOrders = new int[renderers.Length];
@@ -245,6 +259,17 @@ namespace LiquidSort.Levels
         public void CancelSelection()
         {
             FinishSelection();
+        }
+
+        private bool TryGetSelectableBottle(int glassId, out LiquidBottle bottle,
+                                             out Renderer[] renderers)
+        {
+            renderers = null;
+            if (!shelfView.TryGetBottle(glassId, out bottle)
+                || bottle == null || !bottle.gameObject.activeInHierarchy)
+                return false;
+            bottle.GetSortingSnapshot(out renderers, out _);
+            return renderers != null && renderers.Length > 0;
         }
 
         bool IBartenderInputPolicy.Allows(BartenderInputRequest request,

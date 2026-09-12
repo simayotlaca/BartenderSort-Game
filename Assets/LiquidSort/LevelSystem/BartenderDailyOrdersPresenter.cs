@@ -45,12 +45,18 @@ namespace LiquidSort.Levels
             "<mspace=0.62em>{0:00}</mspace><color=#FFCD36>:</color>"
             + "<mspace=0.62em>{1:00}</mspace><color=#FFCD36>:</color>"
             + "<mspace=0.62em>{2:00}</mspace>";
-        private const string GreenOrangeMugIconSpritePath =
-            "Ui/DailyOrders/DailyOrders_Icon_MugGreenOrangeFoam";
-        private const string CocktailIconSpritePath =
-            "Ui/DailyOrders/DailyOrders_Icon_CocktailBluePinkUmbrella_Approved";
-        private const string BeerIconSpritePath =
-            "Ui/DailyOrders/DailyOrders_Icon_BeerNavyYellowMint_Approved";
+        private const string ClipboardIconSpritePath =
+            "Ui/DailyOrders/DailyOrders_Icon_Clipboard_Clean";
+        private const string OrderGlassIconSpritePath =
+            "Ui/DailyOrders/DailyOrders_Icon_OrderGlass_Clean";
+        private const string WinsIconSpritePath =
+            "Ui/DailyOrders/DailyOrders_Icon_Wins_Clean";
+        private const string ServingIconSpritePath =
+            "Ui/DailyOrders/DailyOrders_Icon_Serving_Clean";
+        private const string ClaimArtworkSpritePath =
+            "Ui/DailyOrders/DailyOrders_Claim500_GreenGold";
+        private const string ClaimFrameSpritePath =
+            "Ui/DailyOrders/DailyOrders_ClaimFrame_GreenGold";
         private const string OrangePlateSpritePath =
             "Ui/DailyOrders/DailyOrders_IconPlate_Orange";
         private const string PinkPlateSpritePath =
@@ -87,6 +93,10 @@ namespace LiquidSort.Levels
         private TextMeshProUGUI completedCount;
         private TextMeshProUGUI actionLabel;
         private Button actionButton;
+        private Image actionImage;
+        private Sprite playActionSprite;
+        private Sprite claimActionSprite;
+        private Sprite claimFrameSprite;
         private TextMeshProUGUI feedback;
         private bool subscribed;
         private float nextTimerRefresh;
@@ -373,9 +383,9 @@ namespace LiquidSort.Levels
             ApplyPopupTextStyle(completedCount);
             SetTopRect(completedCount.rectTransform, 178f, 520f, 44f);
 
-            taskIcons[0] = Resources.Load<Sprite>(GreenOrangeMugIconSpritePath);
-            taskIcons[1] = Resources.Load<Sprite>(CocktailIconSpritePath);
-            taskIcons[2] = Resources.Load<Sprite>(BeerIconSpritePath);
+            taskIcons[0] = Resources.Load<Sprite>(ClipboardIconSpritePath);
+            taskIcons[1] = Resources.Load<Sprite>(WinsIconSpritePath);
+            taskIcons[2] = Resources.Load<Sprite>(ServingIconSpritePath);
             taskPlates[0] = Resources.Load<Sprite>(BluePlateSpritePath);
             taskPlates[1] = Resources.Load<Sprite>(OrangePlateSpritePath);
             taskPlates[2] = Resources.Load<Sprite>(PinkPlateSpritePath);
@@ -388,9 +398,12 @@ namespace LiquidSort.Levels
                 "Serve 10 units", BartenderDailyOrdersTuning.ServedUnitTarget);
 
             GameObject action = CreateUi("DailyOrders_Action", panel.transform);
-            Image actionImage = action.AddComponent<Image>();
-            actionImage.sprite = menu.PrimaryActionSprite != null
+            actionImage = action.AddComponent<Image>();
+            playActionSprite = menu.PrimaryActionSprite != null
                 ? menu.PrimaryActionSprite : Resources.Load<Sprite>(BlueCardSpritePath);
+            claimActionSprite = Resources.Load<Sprite>(ClaimArtworkSpritePath);
+            claimFrameSprite = Resources.Load<Sprite>(ClaimFrameSpritePath);
+            actionImage.sprite = playActionSprite;
             actionImage.type = Image.Type.Simple;
             actionImage.preserveAspect = true;
             RectTransform actionRect = action.GetComponent<RectTransform>();
@@ -497,6 +510,8 @@ namespace LiquidSort.Levels
             card.SetIconPlate(taskPlates[index]);
             card.Setup(title, 0, target, BartenderDailyOrdersTuning.RewardPerTask,
                 taskIcons[index]);
+            if (index == 0)
+                card.SetOrderGlass(Resources.Load<Sprite>(OrderGlassIconSpritePath));
             taskCards.Add(card);
         }
 
@@ -655,16 +670,28 @@ namespace LiquidSort.Levels
                 completedCount.text = "<color=#FFDC68>" + snapshot.CompletedTaskCount
                     + " / 3</color> complete";
 
-            if (actionLabel != null)
-            {
-                actionLabel.text = snapshot.RewardClaimed ? "COMPLETED" : snapshot.CanClaim
-                    ? $"CLAIM\n{BartenderDailyOrdersTuning.TotalRewardCoins} COINS" : "PLAY";
-                actionLabel.fontSize = snapshot.RewardClaimed ? 30f : snapshot.CanClaim ? 32f : 42f;
-            }
+            RefreshActionVisual(snapshot);
             if (actionButton != null)
                 actionButton.interactable = available && !closing && !snapshot.RewardClaimed;
             SetActionPulse(IsOpen && snapshot.CanClaim && available && !closing);
             UpdateSideLock(snapshot.RewardClaimed);
+        }
+
+        private void RefreshActionVisual(BartenderDailyOrdersSnapshot snapshot)
+        {
+            bool canClaim = snapshot.CanClaim && !snapshot.RewardClaimed;
+            // The approved artwork includes its lettering. Keep a text-free frame
+            // available so future reward tuning cannot display an outdated amount.
+            bool useClaimArtwork = canClaim && claimActionSprite != null
+                && BartenderDailyOrdersTuning.TotalRewardCoins == 500;
+            if (actionImage != null)
+                actionImage.sprite = useClaimArtwork ? claimActionSprite
+                    : canClaim && claimFrameSprite != null ? claimFrameSprite : playActionSprite;
+            if (actionLabel == null) return;
+            actionLabel.gameObject.SetActive(!useClaimArtwork);
+            actionLabel.text = snapshot.RewardClaimed ? "COMPLETED" : canClaim
+                ? $"CLAIM\n{BartenderDailyOrdersTuning.TotalRewardCoins} COINS" : "PLAY";
+            actionLabel.fontSize = snapshot.RewardClaimed ? 30f : canClaim ? 32f : 42f;
         }
 
         private void RefreshIntroduction()

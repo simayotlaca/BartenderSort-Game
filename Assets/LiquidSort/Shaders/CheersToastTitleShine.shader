@@ -1,10 +1,11 @@
-// Wordmark-only RGB glint. Existing sprite alpha, UI tint and clipping are retained.
+// Wordmark-only glint and a small alpha inset that removes the source artwork's pale matte fringe.
 Shader "LiquidSort/UI/CheersToastTitleShine"
 {
     Properties
     {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
+        _EdgeInsetTexels ("Wordmark Edge Inset (Texture Pixels)", Range(0,4)) = 2.5
         [HideInInspector] _SpriteUVRect ("Sprite UV Rect", Vector) = (0,0,1,1)
         [HideInInspector] _ShinePosition ("Shine Position", Float) = -0.3
         [HideInInspector] _ShineAmount ("Shine Amount", Range(0,1)) = 0
@@ -77,6 +78,7 @@ Shader "LiquidSort/UI/CheersToastTitleShine"
             };
 
             sampler2D _MainTex;
+            float4 _MainTex_TexelSize;
             fixed4 _TextureSampleAdd;
             fixed4 _Color;
             float4 _ClipRect;
@@ -84,6 +86,32 @@ Shader "LiquidSort/UI/CheersToastTitleShine"
             float _ShinePosition;
             half _ShineAmount;
             half _FlashAmount;
+            float _EdgeInsetTexels;
+
+            half WordmarkAlpha(float2 uv)
+            {
+                // Keep samples within this sprite when Unity packs it into an atlas.
+                float2 insideMin = step(_SpriteUVRect.xy, uv);
+                float2 insideMax = step(uv, _SpriteUVRect.zw);
+                return tex2D(_MainTex, clamp(uv, _SpriteUVRect.xy, _SpriteUVRect.zw)).a
+                    * insideMin.x * insideMin.y * insideMax.x * insideMax.y;
+            }
+
+            half CleanWordmarkAlpha(float2 uv, half originalAlpha)
+            {
+                float2 d = abs(_MainTex_TexelSize.xy) * _EdgeInsetTexels;
+                half alpha = originalAlpha;
+                alpha = min(alpha, WordmarkAlpha(uv + float2(d.x, 0)));
+                alpha = min(alpha, WordmarkAlpha(uv - float2(d.x, 0)));
+                alpha = min(alpha, WordmarkAlpha(uv + float2(0, d.y)));
+                alpha = min(alpha, WordmarkAlpha(uv - float2(0, d.y)));
+                d *= 0.70710678;
+                alpha = min(alpha, WordmarkAlpha(uv + d));
+                alpha = min(alpha, WordmarkAlpha(uv - d));
+                alpha = min(alpha, WordmarkAlpha(uv + float2(d.x, -d.y)));
+                alpha = min(alpha, WordmarkAlpha(uv + float2(-d.x, d.y)));
+                return alpha;
+            }
 
             v2f vert(appdata_t v)
             {
@@ -100,6 +128,8 @@ Shader "LiquidSort/UI/CheersToastTitleShine"
             fixed4 frag(v2f i) : SV_Target
             {
                 fixed4 source = tex2D(_MainTex, i.texcoord) + _TextureSampleAdd;
+                // Only contract the alpha boundary. Interior colors and their white highlights stay intact.
+                source.a = CleanWordmarkAlpha(i.texcoord, source.a);
                 float2 spriteUV = (i.texcoord - _SpriteUVRect.xy)
                     / max(_SpriteUVRect.zw - _SpriteUVRect.xy, float2(0.00001, 0.00001));
                 float diagonal = spriteUV.x + (0.5 - spriteUV.y) * 0.32;

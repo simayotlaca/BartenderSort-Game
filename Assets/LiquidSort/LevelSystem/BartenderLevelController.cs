@@ -143,14 +143,14 @@ namespace LiquidSort.Levels
         }
 
         /// <summary>
-        /// I save these values so a failed purchase can restore timers, undo deadlines and stock before the
-        /// commit.
+        /// A failed time purchase restores timers, undo history/deadlines and stock before the commit.
         /// </summary>
         private sealed class TimeBoostMutationSnapshot
         {
             public double[] TimeBonusByOrderIndex;
             public int TimeBoostRemaining;
             public Dictionary<OrderDef, double> LiveDeadlines;
+            public BoardMemento[] UndoHistory;
             public double?[][] UndoDeadlines;
         }
 
@@ -243,10 +243,14 @@ namespace LiquidSort.Levels
         [Header("Dead-end check")]
         [Tooltip("End the round when no winning path remains, even if moves are available.")]
         [SerializeField] private bool detectDeadEnd = true;
-        [Tooltip("Total search nodes allowed after each move.")]
+        [Tooltip("Search nodes allowed in the first check after each move.")]
         [SerializeField, Min(1)] private int deadEndNodeBudget = 40000;
-        [Tooltip("Total search CPU time in ms. A timeout means inconclusive.")]
+        [Tooltip("CPU time for the first check in ms. An inconclusive result gets one deeper check.")]
         [SerializeField, Min(1)] private int deadEndMaxMs = 10;
+        [Tooltip("Node budget for one deeper check when the first search is inconclusive.")]
+        [SerializeField, Min(1)] private int deadEndExtendedNodeBudget = 250000;
+        [Tooltip("Total CPU time for the deeper check in ms. Work is still spread across frames.")]
+        [SerializeField, Min(1)] private int deadEndExtendedMaxMs = 500;
         [Tooltip("Search time per frame in ms. Start with 1 ms at 60 FPS.")]
         [SerializeField, Range(1, 4)] private int deadEndSliceMs = 1;
         [Tooltip("Idle delay before checking the last move. Avoids searches between quick moves.")]
@@ -303,7 +307,8 @@ namespace LiquidSort.Levels
         private BsBoard deadEndProbeBoard;
         private int deadEndProbeRevision = -1;
         private bool deadEndProbePending;
-        private bool deadEndAwaitingEscape;
+        private bool deadEndProbeExtended;
+        private bool deadEndAwaitingCompletion;
         private string deadEndProbeStateKey;
         private float deadEndProbeEarliestTime;
 
@@ -1931,7 +1936,7 @@ namespace LiquidSort.Levels
                 // passes.
                 bool deadEndProbeArmed = deadEndProbePending || deadEndProbe != null;
                 SyncBoardProjection();
-                if (deadEndAwaitingEscape)
+                if (deadEndAwaitingCompletion)
                     deadEndProbeBoard = boardProjection;
                 else if (deadEndProbeArmed) ScheduleDeadEndProbe();
                 PublishCoordinatorCommit(commit, publishBoard: false);
@@ -2282,15 +2287,15 @@ namespace LiquidSort.Levels
             commandInProgress = true;
             try
             {
-                BoardMemento undoSnapshot = undoHistoryDepth > 0
-                    ? CaptureCurrentMemento()
-                    : null;
-                BoardMemento evictedUndo = CommitUndoSnapshot(undoSnapshot);
+                // Delivery is permanent. Save the cleared history with the delivered board so neither
+                // undo nor resuming the round can restore this order or an earlier board.
+                var previousUndoHistory = new List<BoardMemento>(undoHistory);
+                undoHistory.Clear();
                 if (!TryCommitBoardStage(
                         staged, 0, out BsRoundCommit commit,
                         out bool publishNow, out rejectionReason))
                 {
-                    RollBackCommittedUndo(undoSnapshot, evictedUndo);
+                    undoHistory.AddRange(previousUndoHistory);
                     coordinator.TryDiscard(staged);
                     return false;
                 }
@@ -2312,8 +2317,8 @@ namespace LiquidSort.Levels
             }
         }
 
-        // Boosters require Playing with no command or view lock. Undo only reverts moves; paid boosters
-        // stay spent, and failed rounds must use retry.
+        // Boosters require Playing with no command or view lock. Undo only reverts pours since the last
+        // delivery; paid boosters stay spent, and failed rounds must use retry.
 
         private static bool IsValidPaidBoosterCost(int coinCost,
                                                    out string rejectionReason)
@@ -2342,7 +2347,14 @@ namespace LiquidSort.Levels
 
         public bool CanPurchaseUndo(out string rejectionReason)
         {
-            int coinCost = BartenderProgressTuning.UndoBoosterCoinCost;
+            return CanUseUndo(out rejectionReason)
+                   && CanAffordBoosterPurchase(
+                       BartenderProgressTuning.UndoBoosterCoinCost, out rejectionReason);
+        }
+
+        /// <summary>Checks the move before the wallet so buying coins cannot bypass an undo boundary.</summary>
+        internal bool CanUseUndo(out string rejectionReason)
+        {
             if (!CanAcceptCommand(out rejectionReason)) return false;
             if (undoHistory.Count == 0)
             {
@@ -2356,7 +2368,6 @@ namespace LiquidSort.Levels
                 rejectionReason = "No undo uses remain";
                 return false;
             }
-            if (!CanAffordBoosterPurchase(coinCost, out rejectionReason)) return false;
             if (!MementoHasExpiredTimedOrder(undoHistory[undoHistory.Count - 1]))
                 return true;
             rejectionReason =
@@ -2375,6 +2386,7 @@ namespace LiquidSort.Levels
                 || memento.Stamp.Token != current.Token
                 || memento.Stamp.Revision > current.Revision
                 || memento.Stamp.BoardRevision > current.BoardRevision
+                || memento.Board.Delivered != boardProjection.Delivered
                 || memento.Board.IsWin()
                 || memento.Board.IsFail())
             {
@@ -2453,6 +2465,13 @@ namespace LiquidSort.Levels
         public bool CanPurchaseExtraGlass(GlassType type,
                                           out string rejectionReason)
         {
+            return CanUseExtraGlass(type, out rejectionReason)
+                   && CanAffordBoosterPurchase(
+                       BartenderProgressTuning.ExtraGlassBoosterCoinCost, out rejectionReason);
+        }
+
+        internal bool CanUseExtraGlass(GlassType type, out string rejectionReason)
+        {
             if (!CanAcceptCommand(out rejectionReason)) return false;
             if (ExtraGlassRemaining <= 0)
             {
@@ -2469,9 +2488,7 @@ namespace LiquidSort.Levels
                 rejectionReason = $"At most {MaxActiveGlasses} glasses can be active";
                 return false;
             }
-            return CanAffordBoosterPurchase(
-                BartenderProgressTuning.ExtraGlassBoosterCoinCost,
-                out rejectionReason);
+            return true;
         }
 
         public bool TryPurchaseExtraGlass(GlassType type,
@@ -2552,6 +2569,13 @@ namespace LiquidSort.Levels
                 seconds, coinCost, false, false, false, out _);
         }
 
+        internal bool CanUseTimeBoost(float seconds, int coinCost, out string rejectionReason)
+        {
+            return CanPurchaseTimeBoost(seconds, coinCost,
+                includeDetailedBalanceReason: false, ignoreCoins: true,
+                authorizedOfferPurchase: false, out rejectionReason);
+        }
+
         private bool CanPurchaseTimeBoost(float seconds, int coinCost,
                                           bool includeDetailedBalanceReason,
                                           out string rejectionReason)
@@ -2615,6 +2639,10 @@ namespace LiquidSort.Levels
             try
             {
                 rollback = CaptureTimeBoostMutation();
+                // Expiry is an undo boundary. The offer already blocks undo; persist the cleared history
+                // with its accepted time bonus so continuing or resuming cannot cross that boundary.
+                // Buying ordinary +Time before expiry still keeps the existing pour history.
+                if (authorizedOfferPurchase) undoHistory.Clear();
                 // The target set stays fixed on Unity's main thread; commandInProgress blocks nested
                 // commands.
                 for (int target = 0; target < targetOrders.Length; target++)
@@ -2662,6 +2690,7 @@ namespace LiquidSort.Levels
                 TimeBoostRemaining = TimeBoostRemaining,
                 LiveDeadlines = new Dictionary<OrderDef, double>(
                     orderDeadlines, ReferenceComparer<OrderDef>.Instance),
+                UndoHistory = undoHistory.ToArray(),
                 UndoDeadlines = new double?[undoHistory.Count][],
             };
             for (int history = 0; history < undoHistory.Count; history++)
@@ -2683,6 +2712,8 @@ namespace LiquidSort.Levels
             foreach (KeyValuePair<OrderDef, double> deadline in snapshot.LiveDeadlines)
                 orderDeadlines.Add(deadline.Key, deadline.Value);
 
+            undoHistory.Clear();
+            undoHistory.AddRange(snapshot.UndoHistory);
             int historyCount = Math.Min(
                 undoHistory.Count, snapshot.UndoDeadlines.Length);
             for (int history = 0; history < historyCount; history++)
@@ -2779,15 +2810,19 @@ namespace LiquidSort.Levels
         /// </summary>
         public bool CanPurchaseShuffle(out string rejectionReason)
         {
+            return CanUseShuffle(out rejectionReason)
+                   && CanAffordBoosterPurchase(
+                       BartenderProgressTuning.ShuffleBoosterCoinCost, out rejectionReason);
+        }
+
+        internal bool CanUseShuffle(out string rejectionReason)
+        {
             if (!CanAcceptCommand(out rejectionReason)) return false;
             if (ShuffleRemaining <= 0)
             {
                 rejectionReason = "No shuffle uses remain";
                 return false;
             }
-            if (!CanAffordBoosterPurchase(
-                    BartenderProgressTuning.ShuffleBoosterCoinCost,
-                    out rejectionReason)) return false;
             if (boardProjection != null && boardProjection.HasShuffleTarget()) return true;
             rejectionReason = "There is no bottle whose layers can be shuffled";
             return false;
@@ -3489,6 +3524,9 @@ namespace LiquidSort.Levels
                         "A saved undo checkpoint is stale or foreign";
                     return false;
                 }
+                // Older saves included delivery checkpoints. Keep only pours since the latest delivery
+                // without rejecting the player's otherwise valid saved round.
+                if (historyBoard.Delivered != restoredBoard.Delivered) continue;
                 restoredHistory.Add(new BoardMemento
                 {
                     Board = historyBoard,
@@ -4484,7 +4522,7 @@ namespace LiquidSort.Levels
         private void AdvanceDeadEndProbe()
         {
             BsSolver.IncrementalSearch probe = deadEndProbe;
-            if (probe == null && !deadEndProbePending && !deadEndAwaitingEscape) return;
+            if (probe == null && !deadEndProbePending && !deadEndAwaitingCompletion) return;
 
             BsBoard expectedBoard = deadEndProbeBoard;
             int expectedRevision = deadEndProbeRevision;
@@ -4509,9 +4547,9 @@ namespace LiquidSort.Levels
             if (MutationBlocked) return;
             if (Time.unscaledTime < deadEndProbeEarliestTime) return;
 
-            if (deadEndAwaitingEscape)
+            if (deadEndAwaitingCompletion)
             {
-                ReevaluateKnownDeadEnd();
+                CompleteKnownDeadEnd();
                 return;
             }
 
@@ -4529,10 +4567,16 @@ namespace LiquidSort.Levels
                     }
                     else
                     {
+                        int nodeBudget = Mathf.Max(1, deadEndNodeBudget);
+                        int workMs = Mathf.Max(1, deadEndMaxMs);
+                        if (deadEndProbeExtended)
+                        {
+                            nodeBudget = Mathf.Max(nodeBudget, deadEndExtendedNodeBudget);
+                            workMs = Mathf.Max(workMs, deadEndExtendedMaxMs);
+                        }
                         probe = BsSolver.BeginIncremental(
-                            expectedBoard, Mathf.Max(1, deadEndNodeBudget),
-                            BsSolver.DefaultMaxDepth, Mathf.Max(1, deadEndMaxMs),
-                            stateKey);
+                            expectedBoard, nodeBudget,
+                            BsSolver.DefaultMaxDepth, workMs, stateKey);
                         deadEndProbe = probe;
                         deadEndProbePending = false;
                     }
@@ -4561,6 +4605,25 @@ namespace LiquidSort.Levels
                 }
             }
 
+            if (result != null && result.Outcome == SolveOutcome.Inconclusive
+                && !deadEndProbeExtended)
+            {
+                // Retry once from this same board with a larger budget. Keep both checks sliced so a slow
+                // phone can finish the proof without running the full search in one frame.
+                probe?.Cancel();
+                deadEndProbe = null;
+                deadEndProbePending = true;
+                deadEndProbeExtended = true;
+                return;
+            }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (result != null && result.Outcome == SolveOutcome.Inconclusive)
+                Debug.Log($"Level {CurrentLevel?.Index}: dead-end check remains inconclusive "
+                    + $"after {result.NodesVisited} nodes / {result.ElapsedMs} ms. "
+                    + "The round remains playable; the next board change starts a new check.", this);
+#endif
+
             string completedStateKey = deadEndProbeStateKey;
             CancelDeadEndProbe();
             RememberDeadEndOutcome(completedStateKey, result);
@@ -4574,21 +4637,17 @@ namespace LiquidSort.Levels
                 || State != BartenderLevelState.Playing)
                 return;
 
-            // Keep the board proof while paid escape options change. Expiring undo time or spent coins do
-            // not require another solve.
+            // A proven dead end ends the round regardless of booster stock or coins. Keep the proof only
+            // if committing the result needs a retry; no additional solve is needed for that retry.
             deadEndProbeBoard = expectedBoard;
             deadEndProbeRevision = expectedRevision;
-            deadEndAwaitingEscape = true;
-            ReevaluateKnownDeadEnd();
+            deadEndAwaitingCompletion = true;
+            CompleteKnownDeadEnd();
         }
 
-        private void ReevaluateKnownDeadEnd()
+        private void CompleteKnownDeadEnd()
         {
-            // The solver checks free pour and delivery moves. Fail only when no rescue can currently be
-            // bought and used.
-            if (HasUsableDeadEndEscape()) return;
-            // Availability checks can open an offer or end the round. Respect that result before declaring
-            // a dead end.
+            // Timer offers, pauses and active presentations keep their normal priority.
             if (MutationBlocked || State != BartenderLevelState.Playing) return;
 
             if (!TryCompleteRound(
@@ -4604,14 +4663,6 @@ namespace LiquidSort.Levels
             }
         }
 
-        internal bool HasUsableDeadEndEscape()
-        {
-            if (CanPurchaseUndo(out _)) return true;
-            if (CanPurchaseExtraGlass(
-                    BartenderProgressTuning.PurchasedExtraGlassType, out _)) return true;
-            return CanPurchaseShuffle(out _);
-        }
-
         private void CancelDeadEndProbe()
         {
             BsSolver.IncrementalSearch probe = deadEndProbe;
@@ -4619,7 +4670,8 @@ namespace LiquidSort.Levels
             deadEndProbeBoard = null;
             deadEndProbeRevision = -1;
             deadEndProbePending = false;
-            deadEndAwaitingEscape = false;
+            deadEndProbeExtended = false;
+            deadEndAwaitingCompletion = false;
             deadEndProbeStateKey = null;
             deadEndProbeEarliestTime = 0f;
             probe?.Cancel();

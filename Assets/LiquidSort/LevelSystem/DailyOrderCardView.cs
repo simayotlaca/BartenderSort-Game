@@ -48,6 +48,7 @@ namespace LiquidSort.Levels
         private Color progressTextColor;
         private Material progressTextMaterial;
         private Image completionPlate;
+        private Image orderGlass;
         private Material fillColorMaterial;
         private Material trackColorMaterial;
         public bool IsAnimating { get; private set; }
@@ -102,6 +103,30 @@ namespace LiquidSort.Levels
             iconPlate.sprite = plateSprite;
             iconPlate.preserveAspect = true;
             iconPlate.enabled = plateSprite != null;
+        }
+
+        /// <summary>The order illustration keeps the clean clipboard and glass as separate sprites.</summary>
+        public void SetOrderGlass(Sprite glassSprite)
+        {
+            if (icon == null || glassSprite == null) return;
+            icon.rectTransform.anchoredPosition = new Vector2(101f, 0f);
+            icon.rectTransform.sizeDelta = new Vector2(192f, 192f);
+            if (orderGlass == null)
+            {
+                GameObject glass = new GameObject("OrderGlass", typeof(RectTransform), typeof(Image));
+                glass.layer = icon.gameObject.layer;
+                glass.transform.SetParent(icon.transform.parent, false);
+                glass.transform.SetSiblingIndex(icon.transform.GetSiblingIndex() + 1);
+                orderGlass = glass.GetComponent<Image>();
+                orderGlass.raycastTarget = false;
+                orderGlass.preserveAspect = true;
+                RectTransform rect = orderGlass.rectTransform;
+                rect.anchorMin = rect.anchorMax = new Vector2(0f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.anchoredPosition = new Vector2(160f, -13f);
+                rect.sizeDelta = new Vector2(184f, 184f);
+            }
+            orderGlass.sprite = glassSprite;
         }
 
         /// <summary>
@@ -245,7 +270,7 @@ namespace LiquidSort.Levels
 
             rect.anchoredPosition = progressTextPosition;
             progressText.alignment = complete ? TextAlignmentOptions.Midline : progressTextAlignment;
-            progressText.fontSize = complete ? 32f : progressTextFontSize;
+            progressText.fontSize = complete ? 36f : progressTextFontSize;
             progressText.color = complete ? CompletionTextColor : progressTextColor;
             Material labelMaterial = complete && completionTextMaterial != null
                 ? completionTextMaterial : progressTextMaterial;

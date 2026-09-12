@@ -52,3 +52,25 @@ __pycache__/
 *.pfx
 *.keystore
 *.jks
+
+# Local migration, verification and audit work
+/Assets/Editor/CheersRefinedInstaller.cs*
+/Assets/Editor/CheersRefinedVerification.cs*
+/Assets/Editor/DailyOrdersArtVerification.cs*
+/Docs/BoosterFlowEdgeCases.md
+/Docs/Delivery-Flow-Audit.md
+/Docs/Presentation-FSM-Contracts.md
+
+# Assistant instructions and configuration
+AGENTS.md
+AGENTS.md.meta
+CLAUDE.md
+CLAUDE.md.meta
+GEMINI.md
+GEMINI.md.meta
+SKILL.md
+SKILL.md.meta
+.agents/
+.cursor/
+.cursorrules
+.mcp.json

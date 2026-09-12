@@ -38,7 +38,7 @@ Material:
     - _MaskSoftnessX: 0
     - _MaskSoftnessY: 0
     - _OutlineSoftness: 0
-    - _OutlineWidth: .12
+    - _OutlineWidth: .06
     - _PerspectiveFilter: 0.875
     - _ScaleRatioA: 0.9375
     - _ScaleRatioB: 1
@@ -46,7 +46,7 @@ Material:
     - _ScaleX: 1
     - _ScaleY: 1
     - _ShaderFlags: 0
-    - _Sharpness: 0
+    - _Sharpness: .4
     - _Stencil: 0
     - _StencilComp: 8
     - _StencilOp: 0
@@ -56,8 +56,8 @@ Material:
     - _TextureWidth: 1024
     - _UnderlayDilate: 0
     - _UnderlayOffsetX: 0
-    - _UnderlayOffsetY: -.32
-    - _UnderlaySoftness: .10
+    - _UnderlayOffsetY: -.12
+    - _UnderlaySoftness: 0
     - _VertexOffsetX: 0
     - _VertexOffsetY: 0
     - _WeightBold: 0
@@ -66,6 +66,6 @@ Material:
     - _ClipRect: {r: -32767, g: -32767, b: 32767, a: 32767}
     - _FaceColor: {r: 1, g: 1, b: 1, a: 1}
     - _OutlineColor: {r: 0.298039, g: 0.078431, b: 0.435294, a: 1}
-    - _UnderlayColor: {r: 0.160784, g: 0.047059, b: 0.258824, a: 0.6}
+    - _UnderlayColor: {r: 0.160784, g: 0.047059, b: 0.258824, a: 0.35}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

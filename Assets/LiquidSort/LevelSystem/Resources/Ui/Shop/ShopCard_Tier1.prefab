@@ -9,20 +9,20 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 862075328790820132, guid: 3830a9f97ec3b4ec7a342b0fdd54b1f6, type: 3}
-      propertyPath: m_AnchoredPosition.x
-      value: 426
+      propertyPath: m_AnchorMin.x
+      value: 0.4419087137
       objectReference: {fileID: 0}
     - target: {fileID: 862075328790820132, guid: 3830a9f97ec3b4ec7a342b0fdd54b1f6, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -189
+      propertyPath: m_AnchorMax.x
+      value: 0.6307053942
       objectReference: {fileID: 0}
     - target: {fileID: 862075328790820132, guid: 3830a9f97ec3b4ec7a342b0fdd54b1f6, type: 3}
-      propertyPath: m_SizeDelta.x
-      value: 182
+      propertyPath: m_AnchorMin.y
+      value: 0.09183673469
       objectReference: {fileID: 0}
     - target: {fileID: 862075328790820132, guid: 3830a9f97ec3b4ec7a342b0fdd54b1f6, type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 78
+      propertyPath: m_AnchorMax.y
+      value: 0.3571428571
       objectReference: {fileID: 0}
     - target: {fileID: 1453068862338436541, guid: 3830a9f97ec3b4ec7a342b0fdd54b1f6, type: 3}
       propertyPath: m_Sprite

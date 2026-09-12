@@ -92,6 +92,12 @@ namespace LiquidSort.Levels
         WinCardReveal,
         // The Daily Orders hint bubble opening on the menu.
         DailyRewardHint,
+        // A timed order runs out. Append new values only.
+        OrderExpired,
+        // Coins leave the balance: booster fees, paid continue, paid refill.
+        CoinSpend,
+        // The board and HUD flying in at the start of every level. Append new values only.
+        LevelIntro,
     }
 
     /// <summary>
@@ -161,6 +167,9 @@ namespace LiquidSort.Levels
                 { BsSfx.StartupLogo, "SFX_StartupLogo" },
                 { BsSfx.WinCardReveal, "SFX_WinCardReveal" },
                 { BsSfx.DailyRewardHint, "SFX_DailyRewardHint" },
+                { BsSfx.OrderExpired, "SFX_OrderExpired" },
+                { BsSfx.CoinSpend, "SFX_CoinSpend" },
+                { BsSfx.LevelIntro, "SFX_LevelIntro" },
             };
 
         // Sorted by pour amount, starting at one unit. This lets missing clips fall back to the nearest
@@ -207,6 +216,9 @@ namespace LiquidSort.Levels
         // Pausing gameplay can lower the bed; result and loading screens suspend playback entirely.
         private float pauseMix = 1f;
         private Coroutine pauseTransition;
+
+        // The coin cue sits under whatever the purchase itself plays, so it stays a layer.
+        private const float CoinSpendVolume = 0.65f;
 
         // The toast music and the card entrance have independently balanced cues.
         private const float WinResultLayerGain = 0.80f;
@@ -279,6 +291,36 @@ namespace LiquidSort.Levels
             }
 
             lastBgmSamples = bgmSource.timeSamples;
+        }
+
+        // Coins leave the balance through several routes, and the campaign path settles inside the
+        // progress service rather than at a presenter. One balance watcher covers every route, and the
+        // singleton guard keeps a duplicate instance from doubling the cue.
+        private int lastKnownCoins = int.MinValue;
+
+        private void OnEnable()
+        {
+            if (Instance != this) return;
+            BartenderProgressService.CoinsChanged += HandleCoinsChanged;
+            // A balance read before the player file is readable is a placeholder, not a purchase.
+            lastKnownCoins = BartenderProgressService.IsAvailable
+                ? BartenderProgressService.Coins
+                : int.MinValue;
+        }
+
+        private void OnDisable()
+        {
+            BartenderProgressService.CoinsChanged -= HandleCoinsChanged;
+        }
+
+        private void HandleCoinsChanged(int coins)
+        {
+            int previous = lastKnownCoins;
+            lastKnownCoins = coins;
+            // Rewards raise the balance and stay silent; the first event only sets the baseline.
+            if (previous == int.MinValue || coins >= previous
+                || !BartenderProgressService.IsAvailable) return;
+            Play(BsSfx.CoinSpend, CoinSpendVolume);
         }
 
         private void OnDestroy()

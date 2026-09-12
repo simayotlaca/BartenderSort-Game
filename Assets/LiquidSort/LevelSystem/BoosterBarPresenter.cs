@@ -60,6 +60,25 @@ namespace LiquidSort.Levels
             _ => EffectiveAddTimeCoinCost,
         };
 
+        /// <summary>Offer coins only when the booster would be usable with a sufficient balance.</summary>
+        internal bool CanOfferShop(BoosterKind kind)
+        {
+            if (!CanCommand() || BartenderProgressService.CanAfford(CoinCostOf(kind)))
+                return false;
+
+            return kind switch
+            {
+                BoosterKind.Undo => controller.CanUseUndo(out _),
+                BoosterKind.ExtraGlass => TryChooseExtraGlassType(out GlassType type)
+                                          && controller.CanUseExtraGlass(type, out _),
+                BoosterKind.Shuffle => shuffleSelection != null
+                                       && shuffleSelection.CanBegin(ignoreCoins: true, out _),
+                BoosterKind.AddTime => controller.CanUseTimeBoost(
+                    EffectiveAddTimeSeconds, EffectiveAddTimeCoinCost, out _),
+                _ => false,
+            };
+        }
+
         private void Awake() => ResolveDependencies();
 
         private void OnEnable()
