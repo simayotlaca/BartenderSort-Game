@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: CheersToast_MugLiquid
+  m_Shader: {fileID: 4800000, guid: 842943b852954e79946023c91a6522e0, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MaskTex:
+        m_Texture: {fileID: 2800000, guid: 8b2c4d6e0f3a5179c2d4e6f8a0b1c3d5, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _ColorMask: 15
+    - _Mode: 0
+    - _Stencil: 0
+    - _StencilComp: 8
+    - _StencilOp: 0
+    - _StencilReadMask: 255
+    - _StencilWriteMask: 255
+    - _UseUIAlphaClip: 0
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Geometry: {r: 395, g: 62, b: 285, a: 395}
+    - _MaskRect: {r: -30.997388, g: -2.6305025, b: 229.4502824, a: 407.838685}
+    - _Slosh: {r: -26.9998196, g: -0.095295, b: 0, a: 0}
+    - _TitleCrop: {r: 0, g: 0, b: 1, a: 1}
+    - _TitleWave: {r: 0, g: 1, b: 143.55, a: 1}
+    - _Wave: {r: 0.0000516, g: 0, b: 0.255, a: 0.59}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

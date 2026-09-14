@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#FFE5A0"/><stop offset="1" stop-color="#EAB344"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#57B3F4"/><stop offset="1" stop-color="#2464D1"/>
+    </linearGradient>
+  </defs>
+  <circle cx="512" cy="512" r="428" fill="url(#gold)"/>
+  <circle cx="512" cy="512" r="400" fill="url(#blue)"/>
+  <polyline points="304,513 453,655 729,374" fill="none" stroke="#FFFEF5"
+    stroke-width="80" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,142 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b97b2ff6e5bde048bbb3e9185e2b854, type: 3}
+  m_Name: Level_016
+  m_EditorClassIdentifier: Assembly-CSharp::BartenderSort.Core.BsLevel
+  Index: 16
+  DisplayName: Level 16
+  Glasses:
+  - Type: 2
+    Layers:
+    - Color: 0
+      Hidden: 0
+      LockUntil: 0
+    - Color: 0
+      Hidden: 0
+      LockUntil: 0
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 4
+    Layers:
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    - Color: 2
+      Hidden: 0
+      LockUntil: 4
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 2
+    Layers:
+    - Color: 4
+      Hidden: 0
+      LockUntil: 0
+    - Color: 1
+      Hidden: 1
+      LockUntil: 0
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 2
+    Layers:
+    - Color: 3
+      Hidden: 1
+      LockUntil: 0
+    - Color: 3
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 4
+    Layers:
+    - Color: 0
+      Hidden: 0
+      LockUntil: 0
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    - Color: 1
+      Hidden: 1
+      LockUntil: 0
+    - Color: 4
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 2
+    Layers:
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 2
+  - Type: 2
+    Layers:
+    - Color: 4
+      Hidden: 0
+      LockUntil: 0
+    - Color: 3
+      Hidden: 0
+      LockUntil: 2
+    - Color: 3
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 0
+  - Type: 2
+    Layers:
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    - Color: 2
+      Hidden: 0
+      LockUntil: 0
+    - Color: 4
+      Hidden: 0
+      LockUntil: 0
+    UnlockAfter: 2
+  ColumnsPerRow: 4
+  Orders:
+  - Kind: 0
+    Glass: 2
+    Contents: 000000000000000003000000
+    TimeLimit: 35
+  - Kind: 1
+    Glass: 2
+    Contents: 040000000300000001000000
+    TimeLimit: 35
+  - Kind: 0
+    Glass: 2
+    Contents: 040000000400000004000000
+    TimeLimit: 35
+  - Kind: 0
+    Glass: 4
+    Contents: 0000000002000000020000000200000002000000
+    TimeLimit: 35
+  - Kind: 0
+    Glass: 2
+    Contents: 030000000300000001000000
+    TimeLimit: 35
+  - Kind: 0
+    Glass: 4
+    Contents: 0200000002000000020000000200000002000000
+    TimeLimit: 35
+  OrderSlots: 3
+  AllowHiddenColors: 1
+  AllowTimedOrders: 1
+  UndoCount: 4
+  ExtraGlassCount: 3
+  TimeBoostCount: 3
+  ShuffleCount: 1
+  ValidatedSolvable: 1
+  ValidationNote: "\xDCretici do\u011Frulad\u0131 (seed -780489713): 952 hamle."
